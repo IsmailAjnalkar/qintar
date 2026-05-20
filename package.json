@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
+    "db:inspect": "tsx src/db/inspect-hubspot.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
