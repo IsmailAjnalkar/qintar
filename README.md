@@ -139,6 +139,83 @@ curl -X POST "https://<staging-host>/api/hubspot/sync?secret=$SYNC_TRIGGER_SECRE
 #    → re-run db:inspect; counts stay stable, no duplicate rows.
 ```
 
+## Stripe billing & entitlements (W2 — QIN-24)
+
+Turns "landing page" into "a product you can pay for." Three tiers — **Starter
+$49 / Team $499 / Scale $1,499 per month** — sold via Stripe Checkout, managed
+in the Stripe Billing Portal, with subscription state driven into the
+multi-tenant model by signed webhooks.
+
+> Implementation note: like the HubSpot integration, the Stripe client is
+> **dependency-free** — raw `fetch` + `node:crypto` (no `stripe` SDK). The
+> surface we need (Checkout, Portal, retrieve, webhook-verify) is small and
+> stable, and webhook signatures are verified with the same HMAC scheme as
+> `stripe.webhooks.constructEvent`.
+
+### Data model (`src/db/schema.ts`)
+
+- `subscriptions` — **one row per `organizations` (tenant)**; the source of
+  truth for entitlement. Holds the Stripe customer/subscription ids, resolved
+  `plan`, `status`, period end, and cancel flag. Written by the webhook.
+- `billing_events` — every processed Stripe event id (unique). The webhook
+  claims the id before doing work, so Stripe's at-least-once delivery never
+  double-applies a state change (idempotency).
+
+Entitlements (`src/lib/billing/plans.ts`) are resolved from the active
+subscription's plan; `active`/`trialing`/`past_due` grant access (the last is a
+dunning grace window), everything else locks the tenant out.
+
+### Code
+
+| Path | Role |
+|---|---|
+| `src/lib/billing/plans.ts` | Tier definitions, per-plan entitlements, status→access rules |
+| `src/lib/billing/config.ts` | Stripe env access, plan↔Price-id resolution, app URL |
+| `src/lib/billing/stripe.ts` | `fetch`-based Stripe client + webhook signature verifier |
+| `src/lib/billing/service.ts` | Customer/subscription persistence + `getEntitlements`/`requireActiveSubscription` |
+| `src/lib/billing/auth.ts` | Interim shared-secret guard for the admin endpoints |
+| `src/app/api/billing/checkout` | `POST` → create a Checkout session for an org + plan |
+| `src/app/api/billing/portal` | `POST` → create a Billing Portal session |
+| `src/app/api/billing/webhook` | `POST` → **signature-verified**, idempotent subscription lifecycle handler |
+| `src/app/api/billing/status` | `GET` → current subscription + resolved entitlements (secret-gated) |
+
+### One-time setup (operator)
+
+1. Create a **Stripe account**. In **Developers → API keys**, copy the **test**
+   secret key (`sk_test_…`) first. Set `STRIPE_SECRET_KEY`.
+2. Create **three Products** (Starter / Team / Scale), each with a **monthly
+   recurring Price** at $49 / $499 / $1,499. Set `STRIPE_PRICE_STARTER`,
+   `STRIPE_PRICE_TEAM`, `STRIPE_PRICE_SCALE` to the `price_…` ids.
+3. Add a **webhook endpoint** pointing at
+   `https://<host>/api/billing/webhook` (events: `checkout.session.completed`,
+   `customer.subscription.*`). Copy its signing secret → `STRIPE_WEBHOOK_SECRET`.
+   Locally: `stripe listen --forward-to localhost:3000/api/billing/webhook`.
+4. Set `BILLING_ADMIN_SECRET` (`openssl rand -hex 32`) and apply migrations
+   (`npm run db:migrate`).
+5. When verified end-to-end in test mode, swap the secret/price/webhook values
+   for their **live** equivalents.
+
+### Verify (test mode)
+
+```bash
+# Pure-logic smoke (no keys/DB/network): webhook signature verify, plan
+# resolution, entitlement mapping.
+npm run billing:smoke
+
+# End-to-end (needs test keys + a migrated DB + an org row):
+curl -X POST "https://<host>/api/billing/checkout?secret=$BILLING_ADMIN_SECRET" \
+  -H 'content-type: application/json' \
+  -d '{"organizationId":"<uuid>","plan":"starter","email":"you@example.com"}'
+#   → { ok, url } : open the URL, pay with test card 4242 4242 4242 4242.
+#   → webhook fires → subscriptions row becomes status=active, plan=starter.
+curl "https://<host>/api/billing/status?organizationId=<uuid>&secret=$BILLING_ADMIN_SECRET"
+#   → { active: true, plan: "starter", entitlements: { … } }
+```
+
+> The checkout/portal/status endpoints are gated by `BILLING_ADMIN_SECRET` only
+> until the authenticated session lands (onboarding/auth follow-up). The webhook
+> is always protected by Stripe signature verification.
+
 ## Deploying
 
 The app is built to deploy to Vercel.

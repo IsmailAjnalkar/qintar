@@ -1,6 +1,7 @@
 import {
   boolean,
   index,
+  integer,
   jsonb,
   numeric,
   pgTable,
@@ -214,6 +215,70 @@ export const syncRuns = pgTable(
     connIdx: index("sync_runs_conn_idx").on(table.connectionId),
   }),
 );
+
+/* -------------------------------------------------------------------------- */
+/* Stripe billing (QIN-24, W2)                                                 */
+/*                                                                            */
+/* One subscription row per organization (the tenant) — `subscriptions` is    */
+/* the source of truth for entitlement. It's written by the Stripe webhook    */
+/* (subscription lifecycle) and read by `lib/billing/service.ts` to resolve   */
+/* what a tenant is allowed to do. The Stripe customer is created lazily at    */
+/* checkout; the row may briefly exist with status "incomplete" and a null    */
+/* plan until the first `customer.subscription.*` event lands.                 */
+/*                                                                            */
+/* `billing_events` gives webhook idempotency: we INSERT the Stripe event id  */
+/* (unique) before processing and skip on conflict, so Stripe's at-least-once */
+/* delivery never double-applies a state change.                              */
+/* -------------------------------------------------------------------------- */
+
+export const subscriptions = pgTable(
+  "subscriptions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    stripeCustomerId: text("stripe_customer_id").notNull(),
+    stripeSubscriptionId: text("stripe_subscription_id"),
+    // starter | team | scale | null (null until first subscription event)
+    plan: text("plan"),
+    priceId: text("price_id"),
+    // Stripe subscription status: active | trialing | past_due | canceled | unpaid | incomplete | incomplete_expired | paused
+    status: text("status").notNull().default("incomplete"),
+    quantity: integer("quantity").notNull().default(1),
+    currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+    cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+    canceledAt: timestamp("canceled_at", { withTimezone: true }),
+    trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+    // Full raw Stripe subscription object for debugging / future fields.
+    raw: jsonb("raw"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    orgUnique: uniqueIndex("subscriptions_org_unique").on(table.organizationId),
+    customerIdx: index("subscriptions_customer_idx").on(table.stripeCustomerId),
+    subIdUnique: uniqueIndex("subscriptions_stripe_sub_unique").on(table.stripeSubscriptionId),
+  }),
+);
+
+export const billingEvents = pgTable(
+  "billing_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    stripeEventId: text("stripe_event_id").notNull(),
+    type: text("type").notNull(),
+    status: text("status").notNull().default("processed"), // processed | ignored | error
+    error: text("error"),
+    receivedAt: timestamp("received_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    eventUnique: uniqueIndex("billing_events_event_unique").on(table.stripeEventId),
+  }),
+);
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type BillingEvent = typeof billingEvents.$inferSelect;
 
 export type Organization = typeof organizations.$inferSelect;
 export type HubspotConnection = typeof hubspotConnections.$inferSelect;

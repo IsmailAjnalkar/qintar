@@ -15,6 +15,13 @@
       "when": 1779296510371,
       "tag": "0001_hubspot_integration",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779300292970,
+      "tag": "0002_billing_stripe",
+      "breakpoints": true
     }
   ]
 }
