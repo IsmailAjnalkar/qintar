@@ -73,6 +73,72 @@ src/
     posthog-provider.tsx     # Client provider + pageview tracker
 ```
 
+## HubSpot integration (W2 — QIN-20)
+
+The product wedge: connect a HubSpot portal via OAuth and sync deals, contacts,
+companies, and activities into Postgres for the W3 Pipeline Health Score.
+
+### Data model (`src/db/schema.ts`)
+
+- `organizations` — tenant anchor (one per connected portal for now).
+- `hubspot_connections` — per-portal OAuth tokens (**AES-256-GCM encrypted at
+  rest**, `src/lib/crypto.ts`), refresh metadata, last-sync status. Unique on
+  `hub_portal_id`, so reconnecting the same portal updates in place.
+- `hs_companies` / `hs_contacts` / `hs_deals` / `hs_activities` — synced CRM
+  entities. Each keeps the full raw HubSpot `properties` JSONB **plus** the
+  normalized columns the Health Score needs. Unique on
+  `(connection_id, hubspot_id)` → re-running a sync upserts, never duplicates.
+- `sync_runs` — per-run audit log (trigger, mode, counts, errors).
+
+> ⚠️ Activity bodies and contact PII live in these rows. They must pass through
+> the redaction/allowlist layer before any LLM prompt (W4) — never log them raw.
+
+### Code
+
+| Path | Role |
+|---|---|
+| `src/lib/crypto.ts` | AES-256-GCM encrypt/decrypt for tokens; `safeEqual` for secrets |
+| `src/lib/hubspot/config.ts` | Endpoints, scopes, property selections |
+| `src/lib/hubspot/oauth.ts` | Authorize URL, code exchange, token refresh, connection persistence |
+| `src/lib/hubspot/client.ts` | Paginated list + Search API readers (429/5xx backoff) |
+| `src/lib/hubspot/sync.ts` | Sync engine: full (list+associations) / incremental (Search by `hs_lastmodifieddate`) |
+| `src/app/api/hubspot/install` | `GET` → redirect to HubSpot consent (sets CSRF state cookie) |
+| `src/app/api/hubspot/callback` | `GET` → exchange code, persist connection, run initial full sync |
+| `src/app/api/hubspot/sync` | `POST` manual / `GET` cron trigger (secret-gated). `vercel.json` runs it every 15 min |
+| `src/app/api/hubspot/status` | `GET` → row counts + connection sync status (secret-gated) |
+
+### One-time setup (operator)
+
+1. Create a **HubSpot developer app** at <https://developers.hubspot.com> → Apps.
+   On the **Auth** tab, copy the Client ID + Client Secret and add a redirect
+   URL of `https://<staging-host>/api/hubspot/callback` (and
+   `http://localhost:3000/api/hubspot/callback` for local). Add scopes:
+   `crm.objects.contacts.read crm.objects.companies.read crm.objects.deals.read`.
+2. Create a **HubSpot test account** (developer app → Testing → Create test
+   account) and seed a few deals/contacts/companies.
+3. Set env vars (locally in `.env.local`, on Vercel in project settings):
+   `HUBSPOT_CLIENT_ID`, `HUBSPOT_CLIENT_SECRET`, `HUBSPOT_REDIRECT_URI`,
+   `TOKEN_ENCRYPTION_KEY` (`openssl rand -base64 32`),
+   `SYNC_TRIGGER_SECRET` (`openssl rand -hex 32`), and on Vercel `CRON_SECRET`.
+4. Apply migrations: `DATABASE_URL=... npm run db:migrate`.
+
+### Verify (acceptance criteria)
+
+```bash
+# 1. Connect: open in a browser, approve the HubSpot consent screen.
+open https://<staging-host>/api/hubspot/install
+#    → callback runs the initial full sync and returns { ok, counts }.
+
+# 2. Confirm data is persisted + queryable:
+DATABASE_URL=... npm run db:inspect
+#    → row counts per table + connection status.
+curl "https://<staging-host>/api/hubspot/status?secret=$SYNC_TRIGGER_SECRET"
+
+# 3. Re-sync is idempotent (updates, no dupes):
+curl -X POST "https://<staging-host>/api/hubspot/sync?secret=$SYNC_TRIGGER_SECRET"
+#    → re-run db:inspect; counts stay stable, no duplicate rows.
+```
+
 ## Deploying
 
 The app is built to deploy to Vercel.
