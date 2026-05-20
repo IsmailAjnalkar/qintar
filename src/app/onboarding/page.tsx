@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { db, schema } from "@/db/client";
 import { getSession } from "@/lib/auth/server";
+import { getSlackConnection } from "@/lib/slack/oauth";
 import { OnboardingStepper } from "@/components/onboarding-stepper";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ async function getConnection(organizationId: string) {
 export default async function ConnectPage() {
   const session = await getSession();
   const connection = session ? await getConnection(session.oid).catch(() => null) : null;
+  const slack = session ? await getSlackConnection(session.oid).catch(() => null) : null;
   const slackConfigured = Boolean(process.env.SLACK_CLIENT_ID);
 
   return (
@@ -80,7 +82,11 @@ export default async function ConnectPage() {
         )}
 
         <div className="flow-divider">Slack (optional)</div>
-        {slackConfigured ? (
+        {slack ? (
+          <div className="flow-pill active">
+            ✓ Slack connected{slack.webhookChannel ? ` — #${slack.webhookChannel.replace(/^#/, "")}` : slack.teamName ? ` — ${slack.teamName}` : ""}
+          </div>
+        ) : slackConfigured ? (
           <a href="/api/slack/install" className="flow-btn secondary fullWidth">
             Add to Slack
           </a>

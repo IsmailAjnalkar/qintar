@@ -14,6 +14,7 @@
     "db:studio": "drizzle-kit studio",
     "billing:smoke": "tsx scripts/billing-smoke.ts",
     "onboarding:smoke": "tsx scripts/onboarding-smoke.ts",
+    "slack:smoke": "tsx scripts/slack-smoke.ts",
     "verify:entitlements": "tsx scripts/entitlement-live-verify.ts",
     "verify:webhook": "tsx scripts/billing-webhook-live-verify.ts",
     "verify:live": "npm run verify:entitlements && npm run verify:webhook"

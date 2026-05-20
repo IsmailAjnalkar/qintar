@@ -338,6 +338,47 @@ export const billingEvents = pgTable(
 export type Subscription = typeof subscriptions.$inferSelect;
 export type BillingEvent = typeof billingEvents.$inferSelect;
 
+/* -------------------------------------------------------------------------- */
+/* Slack connection (QIN-24 #3 — "connect Slack")                              */
+/*                                                                            */
+/* One Slack workspace per org (the digest delivery target). Created during    */
+/* onboarding via OAuth v2; the bot token + incoming-webhook URL are AES-256-  */
+/* GCM encrypted at rest (lib/crypto.ts), same as HubSpot tokens. The digest   */
+/* feature (W3) posts to `incoming_webhook_url_enc` / via the bot token.       */
+/* Unique on organization_id → reconnecting updates in place.                  */
+/* -------------------------------------------------------------------------- */
+
+export const slackConnections = pgTable(
+  "slack_connections",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    teamId: text("team_id").notNull(),
+    teamName: text("team_name"),
+    botUserId: text("bot_user_id"),
+    // Bot token (xoxb-…), encrypted at rest.
+    botTokenEnc: text("bot_token_enc").notNull(),
+    // Incoming-webhook URL (a secret) + the channel the installer chose, if the
+    // incoming-webhook scope was granted. Used for digest delivery.
+    incomingWebhookUrlEnc: text("incoming_webhook_url_enc"),
+    webhookChannel: text("webhook_channel"),
+    webhookChannelId: text("webhook_channel_id"),
+    authedUserId: text("authed_user_id"),
+    scopes: text("scopes"),
+    status: text("status").notNull().default("active"), // active | revoked | error
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    orgUnique: uniqueIndex("slack_connections_org_unique").on(table.organizationId),
+    teamIdx: index("slack_connections_team_idx").on(table.teamId),
+  }),
+);
+
+export type SlackConnection = typeof slackConnections.$inferSelect;
+
 export type Organization = typeof organizations.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type UserInsert = typeof users.$inferInsert;
