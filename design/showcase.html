@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Qintar — Component showcase</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--q-font-body); color: var(--q-text); background: var(--q-bg-subtle); padding: var(--q-space-12) var(--q-space-6); }
+  h1, h2, h3 { font-family: var(--q-font-display); margin: 0; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  .wrap > h1 { font-size: 36px; font-weight: 600; letter-spacing: var(--q-tracking-snugger); }
+  .wrap > p { color: var(--q-text-muted); margin-top: var(--q-space-3); max-width: 60ch; line-height: 1.5; }
+  section.sample { background: var(--q-surface); border: 1px solid var(--q-border); border-radius: var(--q-radius-xl); padding: var(--q-space-8); margin-top: var(--q-space-8); }
+  section.sample > h2 { font-size: 22px; font-weight: 600; margin-bottom: var(--q-space-2); }
+  section.sample > p { color: var(--q-text-muted); margin: 0 0 var(--q-space-6); font-size: 14px; max-width: 60ch; }
+  .row { display: flex; gap: var(--q-space-4); flex-wrap: wrap; align-items: center; margin-bottom: var(--q-space-4); }
+  .label-row { font-family: var(--q-font-mono); font-size: 12px; color: var(--q-text-subtle); margin-bottom: var(--q-space-2); }
+
+  /* tokens preview */
+  .swatch-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--q-space-3); }
+  .swatch { border-radius: var(--q-radius-md); overflow: hidden; border: 1px solid var(--q-border); }
+  .swatch__color { height: 56px; }
+  .swatch__meta { padding: 8px 10px; font-size: 11px; line-height: 1.4; }
+  .swatch__name { font-weight: 500; color: var(--q-text); }
+  .swatch__hex { color: var(--q-text-subtle); font-family: var(--q-font-mono); }
+
+  /* button */
+  .q-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--q-space-2); font-family: var(--q-font-body); font-weight: 500; border: 0; cursor: pointer; transition: background var(--q-duration-micro) var(--q-ease-standard); white-space: nowrap; }
+  .q-btn:focus-visible { outline: none; box-shadow: var(--q-shadow-focus); }
+  .q-btn--sm { height: 32px; padding: 0 12px; font-size: 14px; border-radius: var(--q-radius-md); }
+  .q-btn--md { height: 40px; padding: 0 16px; font-size: 14px; border-radius: var(--q-radius-md); }
+  .q-btn--lg { height: 48px; padding: 0 24px; font-size: 16px; border-radius: var(--q-radius-lg); }
+  .q-btn--primary { background: var(--q-accent); color: var(--q-text-inverse); }
+  .q-btn--primary:hover { background: var(--q-accent-hover); }
+  .q-btn--secondary { background: var(--q-surface); color: var(--q-text); border: 1px solid var(--q-border-strong); }
+  .q-btn--ghost { background: transparent; color: var(--q-text); }
+  .q-btn--ghost:hover { background: var(--q-bg-subtle); }
+  .q-btn--danger { background: var(--q-signal-risk); color: var(--q-text-inverse); }
+  .q-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+  /* input */
+  .q-field { display: flex; flex-direction: column; gap: var(--q-space-1); max-width: 360px; }
+  .q-field__label { font-size: 14px; font-weight: 500; color: var(--q-text); }
+  .q-field__input { height: 40px; padding: 0 14px; border-radius: var(--q-radius-md); border: 1px solid var(--q-border-strong); background: var(--q-surface); font: inherit; font-size: 16px; color: var(--q-text); }
+  .q-field__input:focus { outline: none; border-color: var(--q-border-focus); box-shadow: var(--q-shadow-focus); }
+  .q-field--error .q-field__input { border-color: var(--q-signal-risk); }
+  .q-field__help { font-size: 12px; color: var(--q-text-subtle); }
+  .q-field__help--error { color: var(--q-signal-risk); }
+
+  /* card */
+  .q-card { background: var(--q-surface); border: 1px solid var(--q-border); border-radius: var(--q-radius-lg); padding: var(--q-space-6); max-width: 360px; }
+  .q-card--raised { box-shadow: var(--q-shadow-md); border: 0; }
+
+  /* tooltip + toast preview */
+  .tooltip-mock { display: inline-block; background: var(--q-bg-inverse); color: var(--q-text-inverse); font-size: 14px; padding: 8px 12px; border-radius: var(--q-radius-sm); max-width: 280px; }
+  .toast-mock { display: flex; gap: 12px; background: var(--q-surface); padding: 16px; border-radius: var(--q-radius-lg); box-shadow: var(--q-shadow-lg); max-width: 380px; border: 1px solid var(--q-border); }
+  .toast-mock__icon { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; }
+  .toast-mock--success .toast-mock__icon { background: var(--q-signal-positive); }
+  .toast-mock--error .toast-mock__icon { background: var(--q-signal-risk); }
+  .toast-mock--info .toast-mock__icon { background: var(--q-accent); }
+  .toast-mock__title { font-weight: 500; font-size: 14px; margin-bottom: 2px; }
+  .toast-mock__desc { font-size: 13px; color: var(--q-text-muted); }
+
+  /* empty / loading */
+  .empty-mock { text-align: center; padding: var(--q-space-12) var(--q-space-6); border: 1px dashed var(--q-border-strong); border-radius: var(--q-radius-lg); }
+  .empty-mock h3 { font-size: 18px; font-weight: 600; margin-bottom: var(--q-space-2); }
+  .empty-mock p { color: var(--q-text-muted); margin: 0 0 var(--q-space-4); }
+  .skeleton { background: var(--q-bg-muted); border-radius: var(--q-radius-md); }
+  .skeleton--text { height: 12px; border-radius: 6px; }
+
+  /* signal pills */
+  .pill { font-family: var(--q-font-body); font-size: 11px; font-weight: 600; letter-spacing: var(--q-tracking-wider); text-transform: uppercase; padding: 2px 10px; border-radius: var(--q-radius-full); line-height: 1.6; }
+  .pill--urgent { background: var(--q-signal-urgent-bg); color: var(--q-amber-500); }
+  .pill--risk    { background: var(--q-signal-risk-bg); color: var(--q-signal-risk); }
+  .pill--positive{ background: var(--q-signal-positive-bg); color: var(--q-signal-positive); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Qintar — Component Showcase v0.1</h1>
+  <p>Visual reference for the W1 design system. Tokens: <code style="font-family: var(--q-font-mono);">design/tokens.css</code>. Specs: <code style="font-family: var(--q-font-mono);">design/components.md</code>.</p>
+
+  <!-- COLOR TOKENS -->
+  <section class="sample">
+    <h2>Color — semantic</h2>
+    <p>Use semantic tokens in product UI. Base ramps only when building new components.</p>
+    <div class="swatch-grid">
+      <div class="swatch"><div class="swatch__color" style="background: var(--q-accent);"></div><div class="swatch__meta"><div class="swatch__name">accent</div><div class="swatch__hex">#3B40E0</div></div></div>
+      <div class="swatch"><div class="swatch__color" style="background: var(--q-accent-hover);"></div><div class="swatch__meta"><div class="swatch__name">accent.hover</div><div class="swatch__hex">#2E2FB8</div></div></div>
+      <div class="swatch"><div class="swatch__color" style="background: var(--q-text);"></div><div class="swatch__meta"><div class="swatch__name">text</div><div class="swatch__hex">#111634</div></div></div>
+      <div class="swatch"><div class="swatch__color" style="background: var(--q-bg-inverse);"></div><div class="swatch__meta"><div class="swatch__name">bg.inverse</div><div class="swatch__hex">#0B0F1E</div></div></div>
+      <div class="swatch"><div class="swatch__color" style="background: var(--q-bg-subtle);"></div><div class="swatch__meta"><div class="swatch__name">bg.subtle</div><div class="swatch__hex">#F2F3F8</div></div></div>
+      <div class="swatch"><div class="swatch__color" style="background: var(--q-signal-urgent);"></div><div class="swatch__meta"><div class="swatch__name">signal.urgent</div><div class="swatch__hex">#F5A800</div></div></div>
+      <div class="swatch"><div class="swatch__color" style="background: var(--q-signal-positive);"></div><div class="swatch__meta"><div class="swatch__name">signal.positive</div><div class="swatch__hex">#0D9D66</div></div></div>
+      <div class="swatch"><div class="swatch__color" style="background: var(--q-signal-risk);"></div><div class="swatch__meta"><div class="swatch__name">signal.risk</div><div class="swatch__hex">#C92A2A</div></div></div>
+      <div class="swatch"><div class="swatch__color" style="background: var(--q-border-strong);"></div><div class="swatch__meta"><div class="swatch__name">border.strong</div><div class="swatch__hex">#C9CEDD</div></div></div>
+      <div class="swatch"><div class="swatch__color" style="background: var(--q-text-muted);"></div><div class="swatch__meta"><div class="swatch__name">text.muted</div><div class="swatch__hex">#4A547A</div></div></div>
+    </div>
+  </section>
+
+  <!-- TYPE -->
+  <section class="sample">
+    <h2>Type scale</h2>
+    <p>Geist for display, Inter for body, JetBrains Mono for data.</p>
+    <div style="font-family: var(--q-font-display); font-size: 72px; font-weight: 600; line-height: 1.1; letter-spacing: var(--q-tracking-tight);">display.xl — 72</div>
+    <div style="font-family: var(--q-font-display); font-size: 56px; font-weight: 600; line-height: 1.1; letter-spacing: var(--q-tracking-tight); margin-top: 12px;">display.lg — 56</div>
+    <div style="font-family: var(--q-font-display); font-size: 44px; font-weight: 600; line-height: 1.1; margin-top: 12px;">display.md — 44</div>
+    <div style="font-family: var(--q-font-display); font-size: 36px; font-weight: 600; line-height: 1.25; margin-top: 12px;">heading.lg — 36</div>
+    <div style="font-family: var(--q-font-display); font-size: 30px; font-weight: 600; line-height: 1.25; margin-top: 12px;">heading.md — 30</div>
+    <div style="font-family: var(--q-font-display); font-size: 24px; font-weight: 600; line-height: 1.25; margin-top: 12px;">heading.sm — 24</div>
+    <div style="font-size: 20px; line-height: 1.65; color: var(--q-text-muted); margin-top: 16px;">body.lg — 20. The three deals to push today, every weekday in Slack.</div>
+    <div style="font-size: 16px; line-height: 1.5; margin-top: 8px;">body.md — 16. The default body face. Used for paragraphs, descriptions, and most product copy.</div>
+    <div style="font-size: 14px; line-height: 1.5; margin-top: 8px; color: var(--q-text-muted);">body.sm — 14. Used for compact table cells and helper copy.</div>
+    <div style="font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--q-text-brand); margin-top: 16px;">EYEBROW — 12 / 600 / WIDER</div>
+    <div style="font-family: var(--q-font-mono); font-size: 14px; font-weight: 500; margin-top: 8px;">mono.sm — JetBrains Mono · $48,000.00 · 78%</div>
+  </section>
+
+  <!-- BUTTON -->
+  <section class="sample">
+    <h2>Button</h2>
+    <p>Primary / secondary / ghost / danger × sm / md / lg.</p>
+    <div class="label-row">size = lg</div>
+    <div class="row">
+      <button class="q-btn q-btn--primary q-btn--lg">Join the waitlist</button>
+      <button class="q-btn q-btn--secondary q-btn--lg">See how it works</button>
+      <button class="q-btn q-btn--ghost q-btn--lg">Cancel</button>
+      <button class="q-btn q-btn--danger q-btn--lg">Delete workspace</button>
+    </div>
+    <div class="label-row">size = md (default)</div>
+    <div class="row">
+      <button class="q-btn q-btn--primary q-btn--md">Connect HubSpot</button>
+      <button class="q-btn q-btn--secondary q-btn--md">Skip for now</button>
+      <button class="q-btn q-btn--ghost q-btn--md">Cancel</button>
+      <button class="q-btn q-btn--primary q-btn--md" disabled>Sending…</button>
+    </div>
+    <div class="label-row">size = sm</div>
+    <div class="row">
+      <button class="q-btn q-btn--primary q-btn--sm">Save</button>
+      <button class="q-btn q-btn--secondary q-btn--sm">Cancel</button>
+      <button class="q-btn q-btn--ghost q-btn--sm">Edit</button>
+    </div>
+  </section>
+
+  <!-- INPUT -->
+  <section class="sample">
+    <h2>Input</h2>
+    <p>16px font on mobile to prevent iOS zoom. Errors only after blur.</p>
+    <div class="row">
+      <div class="q-field">
+        <label class="q-field__label" for="s1">Work email</label>
+        <input class="q-field__input" id="s1" type="email" placeholder="you@company.com" />
+        <div class="q-field__help">We'll email when private beta opens.</div>
+      </div>
+      <div class="q-field q-field--error">
+        <label class="q-field__label" for="s2">Work email</label>
+        <input class="q-field__input" id="s2" type="email" value="not-an-email" aria-invalid="true" aria-describedby="s2err"/>
+        <div class="q-field__help q-field__help--error" id="s2err">That doesn't look like a valid email.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CARD -->
+  <section class="sample">
+    <h2>Card</h2>
+    <p>Flat (default) and raised. Use raised only for cards above the page surface, not stacked.</p>
+    <div class="row" style="align-items: stretch;">
+      <div class="q-card">
+        <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--q-text-brand);">Step 01</span>
+        <h3 style="margin-top: 8px; font-size: 18px;">Connect HubSpot</h3>
+        <p style="color: var(--q-text-muted); font-size: 14px; margin-top: 8px;">Two OAuth clicks. We pull deals every 15 minutes.</p>
+      </div>
+      <div class="q-card q-card--raised">
+        <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--q-text-brand);">Featured</span>
+        <h3 style="margin-top: 8px; font-size: 18px;">Team plan</h3>
+        <p style="color: var(--q-text-muted); font-size: 14px; margin-top: 8px;">$499 / mo · up to 10 seats.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TOOLTIP + TOAST -->
+  <section class="sample">
+    <h2>Tooltip + Toast</h2>
+    <p>Tooltip and toast surfaces. Never put critical information in a tooltip.</p>
+    <div class="row" style="align-items: flex-start;">
+      <div class="tooltip-mock">Refresh runs every 15 minutes. Last sync 2 minutes ago.</div>
+      <div class="toast-mock toast-mock--success">
+        <div class="toast-mock__icon" aria-hidden="true"></div>
+        <div>
+          <div class="toast-mock__title">Connected to HubSpot</div>
+          <div class="toast-mock__desc">Your first digest will arrive at 8:30 AM tomorrow.</div>
+        </div>
+      </div>
+      <div class="toast-mock toast-mock--error">
+        <div class="toast-mock__icon" aria-hidden="true"></div>
+        <div>
+          <div class="toast-mock__title">Couldn't reach HubSpot</div>
+          <div class="toast-mock__desc">Reconnect to keep your digest accurate.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EMPTY / LOADING -->
+  <section class="sample">
+    <h2>Empty state + Loading</h2>
+    <p>Empty states are an opportunity, not a void.</p>
+    <div class="row" style="align-items: stretch;">
+      <div class="empty-mock" style="flex: 1;">
+        <h3>No urgent deals.</h3>
+        <p>Your pipeline is clean today.</p>
+        <button class="q-btn q-btn--secondary q-btn--md">View full pipeline</button>
+      </div>
+      <div style="flex: 1; padding: 24px;">
+        <div class="skeleton skeleton--text" style="width: 40%; margin-bottom: 12px;"></div>
+        <div class="skeleton skeleton--text" style="width: 90%; margin-bottom: 8px;"></div>
+        <div class="skeleton skeleton--text" style="width: 80%; margin-bottom: 8px;"></div>
+        <div class="skeleton skeleton--text" style="width: 60%; margin-bottom: 16px;"></div>
+        <div class="skeleton" style="height: 36px; width: 140px; border-radius: 8px;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SIGNAL PILLS -->
+  <section class="sample">
+    <h2>Signal pills</h2>
+    <p>Used across the Slack digest, deal cards, and dashboard. Always paired with a label — never color alone.</p>
+    <div class="row">
+      <span class="pill pill--urgent">Push today</span>
+      <span class="pill pill--risk">Stalled · 14 days</span>
+      <span class="pill pill--risk">At risk</span>
+      <span class="pill pill--positive">Healthy</span>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,43 @@
+# dependencies
+node_modules
+.pnp
+.pnp.js
+
+# next
+.next
+out
+build
+dist
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# misc
+.DS_Store
+.vscode
+.idea
+*.pem
+.vercel
+.turbo
+coverage
+*.tsbuildinfo
+
+# internal GTM / strategy docs — company artifacts, NOT part of the web app.
+# Some contain prospect/contact data; keep them out of the (public) code repo.
+/brand-voice.md
+/discovery-call-tracker.md
+/discovery-script.md
+/icp-target-list.md
+/outbound-templates-w2.md
+/positioning-onepager.md
+/t1-candidates.md
+/icp-target-list*.csv
+*.csv

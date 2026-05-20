@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="qintar">
+  <title>qintar</title>
+  <!-- Text outlined to paths from Geist SemiBold 48px. Font-independent as of v0.2. -->
+  <rect width="64" height="64" rx="14" fill="#0B0F1E"/>
+  <path fill="#FFFFFF" d="M38.45 57.2H32.3V46.5Q31.25 48.42 29.26 49.5Q27.26 50.58 24.82 50.58Q21.17 50.58 18.74 48.75Q16.32 46.93 15.1 43.9Q13.87 40.88 13.87 37.18Q13.87 33.49 15.07 30.44Q16.27 27.39 18.7 25.59Q21.12 23.79 24.77 23.79Q27.31 23.79 29.33 24.92Q31.34 26.05 32.45 28.21L32.54 24.37H38.45ZM26.26 45.58Q29.09 45.58 30.7 43.47Q32.3 41.36 32.3 37.18Q32.3 33.01 30.67 30.9Q29.04 28.78 26.26 28.78Q23.47 28.78 21.86 31.02Q20.26 33.25 20.26 37.18Q20.26 41.12 21.86 43.35Q23.47 45.58 26.26 45.58Z"/>
+  <!-- Signal dot: terminal period of the monogram -->
+  <rect x="42" y="40" width="8" height="8" fill="#5F6FFF"/>
+</svg>

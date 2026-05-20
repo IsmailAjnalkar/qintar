@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build (smoke)
+        run: npm run build
+        env:
+          # Allow the build to succeed without real secrets — runtime code reads these at request time.
+          DATABASE_URL: "postgresql://user:pass@localhost/db?sslmode=disable"
+          NEXT_PUBLIC_SITE_URL: "https://qintar.com"
