@@ -5,7 +5,13 @@ import { PostHogProvider } from "@/lib/posthog-provider";
 import "./tokens.css";
 import "./landing.css";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://qintar.com";
+// Prefer an explicit site URL; otherwise use the live Vercel production domain
+// (auto-set by Vercel, and it tracks a custom domain once one is attached);
+// fall back to the intended apex for local/dev.
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL && `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`) ||
+  "https://qintar.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
