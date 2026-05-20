@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { getSessionFromRequest } from "@/lib/auth/session";
+import { getAppUrl } from "@/lib/billing/config";
 import { safeEqual } from "@/lib/crypto";
 import {
   exchangeCodeForTokens,
@@ -42,13 +44,32 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid_state" }, { status: 400 });
   }
 
+  // Attach the portal to the signed-in user's org when there is a session;
+  // keyless staging installs fall back to a placeholder org (see persistConnection).
+  const session = getSessionFromRequest(req);
+
   try {
     const tokens = await exchangeCodeForTokens(code);
     const info = await getTokenInfo(tokens.access_token);
-    const connection = await persistConnection({ tokens, info });
+    const connection = await persistConnection({
+      tokens,
+      info,
+      organizationId: session?.oid,
+    });
 
     // Initial full sync. Run inline so the connect flow lands on real data.
+    // (The initial sync is intentionally NOT entitlement-gated — it's the
+    // onboarding activation moment, before the user picks a plan.)
     const result = await syncConnection(connection, { full: true, trigger: "initial" });
+
+    // In-flow (browser) connect: continue the onboarding stepper. API/keyless
+    // callers (no session) keep getting JSON for scripted verification.
+    if (session) {
+      const next = `${getAppUrl()}/onboarding/plan?connected=1`;
+      const res = NextResponse.redirect(next);
+      res.cookies.delete(STATE_COOKIE);
+      return res;
+    }
 
     const res = NextResponse.json({
       ok: true,

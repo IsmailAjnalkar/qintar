@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 
 import { db, schema } from "@/db/client";
 import type { HubspotConnection } from "@/db/schema";
+import { gateOrganization } from "@/lib/billing/enforcement";
 
 import { listAll, searchModifiedSince, type HubspotRecord } from "./client";
 import { ACTIVITY_TYPES, PROPERTY_SETS } from "./config";
@@ -224,9 +225,11 @@ export interface SyncOptions {
 export interface SyncResult {
   connectionId: string;
   mode: "full" | "incremental";
-  status: "success" | "error";
+  status: "success" | "error" | "skipped";
   counts: SyncCounts;
   error?: string;
+  /** Set when status is "skipped" (entitlement gate). */
+  skippedReason?: string;
 }
 
 /**
@@ -326,7 +329,14 @@ export async function syncConnection(
   }
 }
 
-/** Sync all active connections (used by the scheduled/cron trigger). */
+/**
+ * Sync all active connections (used by the scheduled/cron trigger).
+ *
+ * Each connection's org is run through the entitlement gate first: with
+ * ENFORCE_ENTITLEMENTS on, an org that has entered billing but isn't paying is
+ * skipped (not synced) rather than erroring. With the flag off, or for orgs
+ * that never entered billing (keyless staging), nothing is gated.
+ */
 export async function syncAllActiveConnections(
   opts: SyncOptions = {},
 ): Promise<SyncResult[]> {
@@ -336,6 +346,17 @@ export async function syncAllActiveConnections(
     .where(eq(schema.hubspotConnections.status, "active"));
   const results: SyncResult[] = [];
   for (const connection of connections) {
+    const gate = await gateOrganization(connection.organizationId);
+    if (!gate.allowed) {
+      results.push({
+        connectionId: connection.id,
+        mode: connection.lastSyncedAt == null ? "full" : "incremental",
+        status: "skipped",
+        counts: {},
+        skippedReason: gate.reason,
+      });
+      continue;
+    }
     results.push(await syncConnection(connection, opts));
   }
   return results;

@@ -75,13 +75,19 @@ export async function getTokenInfo(accessToken: string): Promise<AccessTokenInfo
 /**
  * Persist a freshly authorized connection. Upserts on hub_portal_id so
  * reconnecting the same portal refreshes tokens in place (no duplicate orgs
- * for the same portal). Creates a placeholder organization on first connect.
+ * for the same portal).
+ *
+ * Org attachment (QIN-25): if `organizationId` is provided (the signed-in user's
+ * org from the onboarding flow), the new connection attaches to it. With no
+ * session (keyless staging install), a placeholder organization is created on
+ * first connect — preserving the pre-auth behavior.
  */
 export async function persistConnection(params: {
   tokens: TokenResponse;
   info: AccessTokenInfo;
+  organizationId?: string;
 }): Promise<HubspotConnection> {
-  const { tokens, info } = params;
+  const { tokens, info, organizationId } = params;
   const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
   const scopes = info.scopes?.join(" ") ?? null;
   const portalId = String(info.hub_id);
@@ -109,15 +115,20 @@ export async function persistConnection(params: {
     return updated;
   }
 
-  const [org] = await db
-    .insert(schema.organizations)
-    .values({ name: info.hub_domain ?? `HubSpot portal ${portalId}` })
-    .returning();
+  // Attach to the signed-in org, or mint a placeholder for keyless installs.
+  const orgId =
+    organizationId ??
+    (
+      await db
+        .insert(schema.organizations)
+        .values({ name: info.hub_domain ?? `HubSpot portal ${portalId}` })
+        .returning({ id: schema.organizations.id })
+    )[0].id;
 
   const [created] = await db
     .insert(schema.hubspotConnections)
     .values({
-      organizationId: org.id,
+      organizationId: orgId,
       hubPortalId: portalId,
       hubDomain: info.hub_domain ?? null,
       accessTokenEnc: encryptSecret(tokens.access_token),

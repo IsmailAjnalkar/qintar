@@ -12,7 +12,8 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:inspect": "tsx src/db/inspect-hubspot.ts",
     "db:studio": "drizzle-kit studio",
-    "billing:smoke": "tsx scripts/billing-smoke.ts"
+    "billing:smoke": "tsx scripts/billing-smoke.ts",
+    "onboarding:smoke": "tsx scripts/onboarding-smoke.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.36.4",

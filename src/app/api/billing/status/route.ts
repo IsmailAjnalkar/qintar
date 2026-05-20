@@ -1,25 +1,25 @@
 import { NextResponse } from "next/server";
 
-import { billingAdminAuthorized } from "@/lib/billing/auth";
+import { authorizeBillingOrg } from "@/lib/billing/auth";
 import { getEntitlements } from "@/lib/billing/service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Report the current subscription + resolved entitlements for an org.
+ * Report the current subscription + resolved entitlements for the signed-in org.
  *
- * GET /api/billing/status?organizationId=<uuid>&secret=<BILLING_ADMIN_SECRET>
+ * GET /api/billing/status
+ *   - end users: authenticated session (org from the session)
+ *   - server-to-server: ?organizationId=<uuid>&secret=<BILLING_ADMIN_SECRET>
  */
 export async function GET(req: Request) {
-  if (!billingAdminAuthorized(req)) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-  }
-  const organizationId = new URL(req.url).searchParams.get("organizationId");
-  if (!organizationId) {
-    return NextResponse.json({ ok: false, error: "organizationId is required" }, { status: 400 });
+  const requestedOrgId = new URL(req.url).searchParams.get("organizationId");
+  const auth = authorizeBillingOrg(req, requestedOrgId);
+  if (!auth.ok) {
+    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
 
-  const result = await getEntitlements(organizationId);
-  return NextResponse.json({ ok: true, ...result });
+  const result = await getEntitlements(auth.organizationId);
+  return NextResponse.json({ ok: true, organizationId: auth.organizationId, ...result });
 }

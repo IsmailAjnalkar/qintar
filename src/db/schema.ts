@@ -51,6 +51,64 @@ export const organizations = pgTable("organizations", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+/* -------------------------------------------------------------------------- */
+/* Auth / sessions (QIN-25, W2)                                                 */
+/*                                                                            */
+/* A `users` row is an authenticated person; an `org_members` row links a user */
+/* to an `organizations` row (the tenant) with a role. Onboarding creates one  */
+/* org per signed-up account and an owner membership. `organizationId` for a   */
+/* request is resolved from the session -> the user's membership.             */
+/*                                                                            */
+/* `provider` records where the identity came from: "password" (built-in,     */
+/* keyless-staging path) or an external IdP ("clerk", "google") once those     */
+/* keys are provisioned. `password_hash` is scrypt (see lib/auth/password.ts)  */
+/* and is null for externally-authenticated users. NEVER log it.              */
+/* -------------------------------------------------------------------------- */
+
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    email: text("email").notNull(),
+    // scrypt hash (`scrypt:<saltB64>:<hashB64>`); null for external IdP users.
+    passwordHash: text("password_hash"),
+    name: text("name"),
+    // password | clerk | google
+    provider: text("provider").notNull().default("password"),
+    // External IdP subject id (e.g. Clerk user id) — null for built-in users.
+    externalId: text("external_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    emailUnique: uniqueIndex("users_email_unique").on(table.email),
+    externalIdx: index("users_external_idx").on(table.externalId),
+  }),
+);
+
+export const orgMembers = pgTable(
+  "org_members",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // owner | admin | member
+    role: text("role").notNull().default("owner"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    memberUnique: uniqueIndex("org_members_org_user_unique").on(
+      table.organizationId,
+      table.userId,
+    ),
+    userIdx: index("org_members_user_idx").on(table.userId),
+  }),
+);
+
 export const hubspotConnections = pgTable(
   "hubspot_connections",
   {
@@ -281,6 +339,9 @@ export type Subscription = typeof subscriptions.$inferSelect;
 export type BillingEvent = typeof billingEvents.$inferSelect;
 
 export type Organization = typeof organizations.$inferSelect;
+export type User = typeof users.$inferSelect;
+export type UserInsert = typeof users.$inferInsert;
+export type OrgMember = typeof orgMembers.$inferSelect;
 export type HubspotConnection = typeof hubspotConnections.$inferSelect;
 export type HsCompany = typeof hsCompanies.$inferSelect;
 export type HsContact = typeof hsContacts.$inferSelect;

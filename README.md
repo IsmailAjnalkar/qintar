@@ -212,9 +212,74 @@ curl "https://<host>/api/billing/status?organizationId=<uuid>&secret=$BILLING_AD
 #   → { active: true, plan: "starter", entitlements: { … } }
 ```
 
-> The checkout/portal/status endpoints are gated by `BILLING_ADMIN_SECRET` only
-> until the authenticated session lands (onboarding/auth follow-up). The webhook
-> is always protected by Stripe signature verification.
+> As of QIN-25 the checkout/portal/status endpoints are gated by the
+> **authenticated session** (org taken from the session, not the request body);
+> `BILLING_ADMIN_SECRET` remains only as the server-to-server / automation
+> fallback. The webhook is always protected by Stripe signature verification.
+
+## Onboarding, auth & entitlements (W2 — QIN-25)
+
+End-to-end path for a real customer: **sign up → connect HubSpot → (optional)
+Slack → pick a plan → Stripe Checkout → first digest.**
+
+### Auth provider
+
+Production target is **Clerk** (stack default). Clerk needs operator-provisioned
+keys, so — to keep the keyless staging environment working end-to-end and
+mirror the dependency-/key-optional pattern already used for HubSpot and Stripe
+(raw `fetch`, env-gated, actionable errors) — the **active** provider is a
+built-in, dependency-free **password + HMAC-signed-cookie** session
+(`src/lib/auth/`). When `CLERK_SECRET_KEY` is set, `AUTH_PROVIDER` flips to
+`clerk` and `getSession()` should read Clerk's session; everything downstream
+depends only on `getSession()` / `SessionPayload`, so no call sites change.
+See the swap notes in `src/lib/auth/index.ts`.
+
+### Code
+
+| File | Role |
+| --- | --- |
+| `src/lib/auth/password.ts` | scrypt password hash + constant-time verify |
+| `src/lib/auth/session.ts` | sign/verify the session cookie (pure node:crypto) |
+| `src/lib/auth/server.ts` | `getSession()` / `requireSession()` (server components) |
+| `src/lib/auth/service.ts` | sign-up / sign-in + org provisioning (users, org_members) |
+| `src/app/api/auth/*` | sign-up / sign-in / sign-out route handlers |
+| `src/app/sign-up`, `sign-in` | auth pages |
+| `src/app/onboarding/*` | stepper: connect → plan → done |
+| `src/app/dashboard` | post-onboarding home + graceful paywall |
+| `src/lib/billing/auth.ts` | `authorizeBillingOrg` (session ownership + admin fallback) |
+| `src/lib/billing/enforcement.ts` | `gateOrganization` (flag-gated entitlement enforcement) |
+
+### Entitlement enforcement
+
+`ENFORCE_ENTITLEMENTS` (default **off**) gates recurring value delivery (cron
+sync; W3 digest; W4 drafts). With it off, nothing is gated. With it on, an org
+is only gated **once it has a subscription row** (i.e. it entered billing), so
+the keyless staging sync — which has no subscription rows — is unaffected. The
+initial connect + first sync during onboarding are intentionally **not** gated
+(the activation moment happens before the user picks a plan). Gating is graceful
+(skip / paywall redirect, never a 500).
+
+### One-time setup (operator)
+
+```bash
+# Required to sign up / sign in (signs the session cookie):
+openssl rand -hex 32   # -> AUTH_SESSION_SECRET
+# Apply the new auth tables:
+npm run db:migrate     # adds users + org_members (migration 0003)
+```
+
+### Verify
+
+```bash
+# Pure-logic smoke (no keys/DB/network): password hash, session sign/verify/
+# tamper/expiry, billing org-ownership authorization.
+npm run onboarding:smoke
+
+# End-to-end (needs AUTH_SESSION_SECRET + a migrated DB + Stripe test keys):
+#   open /sign-up → create account → /onboarding (Connect HubSpot) →
+#   /onboarding/plan (pick a tier) → Stripe Checkout (test card 4242…) →
+#   webhook flips subscriptions.status=active → /dashboard shows the plan.
+```
 
 ## Deploying
 

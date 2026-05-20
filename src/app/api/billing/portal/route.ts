@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { db, schema } from "@/db/client";
-import { billingAdminAuthorized } from "@/lib/billing/auth";
+import { authorizeBillingOrg } from "@/lib/billing/auth";
 import { getAppUrl } from "@/lib/billing/config";
 import { createBillingPortalSession } from "@/lib/billing/stripe";
 
@@ -13,27 +13,26 @@ export const dynamic = "force-dynamic";
  * Create a Stripe Billing Portal session so a customer can manage their
  * subscription (update card, change plan, cancel). Returns the hosted URL.
  *
- * Body: { organizationId: string }
+ * Auth: the authenticated session (org taken from the session). Body may be
+ * empty; server-to-server callers present BILLING_ADMIN_SECRET + organizationId.
  */
 export async function POST(req: Request) {
-  if (!billingAdminAuthorized(req)) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  let payload: { organizationId?: string } = {};
+  try {
+    payload = (await req.json()) as { organizationId?: string };
+  } catch {
+    // Body is optional for session callers — ignore parse errors.
   }
 
-  let payload: { organizationId?: string };
-  try {
-    payload = await req.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
-  }
-  if (!payload.organizationId) {
-    return NextResponse.json({ ok: false, error: "organizationId is required" }, { status: 400 });
+  const auth = authorizeBillingOrg(req, payload.organizationId);
+  if (!auth.ok) {
+    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
 
   const rows = await db
     .select({ stripeCustomerId: schema.subscriptions.stripeCustomerId })
     .from(schema.subscriptions)
-    .where(eq(schema.subscriptions.organizationId, payload.organizationId))
+    .where(eq(schema.subscriptions.organizationId, auth.organizationId))
     .limit(1);
   if (rows.length === 0 || !rows[0].stripeCustomerId) {
     return NextResponse.json({ ok: false, error: "no_stripe_customer" }, { status: 404 });

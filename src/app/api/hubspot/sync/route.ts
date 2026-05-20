@@ -32,7 +32,8 @@ async function runSync(req: Request, trigger: "manual" | "cron") {
   }
   const full = new URL(req.url).searchParams.get("full") === "true";
   const results = await syncAllActiveConnections({ full, trigger });
-  const allOk = results.every((r) => r.status === "success");
+  // "skipped" (entitlement gate) is a healthy outcome, not a failure.
+  const allOk = results.every((r) => r.status !== "error");
   return NextResponse.json(
     { ok: allOk, connections: results.length, results },
     { status: allOk ? 200 : 207 },

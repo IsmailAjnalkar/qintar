@@ -1,0 +1,309 @@
+/* ============================================================
+ * Onboarding + auth flow styling (QIN-25).
+ * Built entirely on the design tokens in tokens.css (UXDesigner,
+ * design/onboarding-flow.md §5 component/token map). Single-column,
+ * one primary action per screen.
+ * ============================================================ */
+
+.flow-page {
+  min-height: 100vh;
+  background: var(--q-bg-subtle);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--q-space-12) var(--q-space-4);
+  font-family: Inter, system-ui, sans-serif;
+  color: var(--q-text);
+}
+
+.flow-wordmark {
+  font-family: Geist, Inter, sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--q-text-brand);
+  margin-bottom: var(--q-space-8);
+  text-decoration: none;
+}
+
+.flow-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--q-surface);
+  border: 1px solid var(--q-border);
+  border-radius: var(--q-radius-lg);
+  box-shadow: var(--q-shadow-md);
+  padding: var(--q-space-8);
+}
+.flow-card.wide {
+  max-width: 720px;
+}
+
+.flow-title {
+  font-family: Geist, Inter, sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--q-space-2);
+}
+.flow-subtitle {
+  color: var(--q-text-muted);
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 0 0 var(--q-space-6);
+}
+.flow-caption {
+  color: var(--q-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ---- stepper (4 nodes) ---- */
+.flow-stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--q-space-2);
+  margin-bottom: var(--q-space-8);
+  width: 100%;
+  max-width: 720px;
+}
+.flow-step {
+  display: flex;
+  align-items: center;
+  gap: var(--q-space-2);
+  font-size: 13px;
+  color: var(--q-text-subtle);
+  white-space: nowrap;
+}
+.flow-step-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--q-radius-full);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  border: 2px solid var(--q-border-strong);
+  color: var(--q-text-subtle);
+  background: var(--q-surface);
+  flex: none;
+}
+.flow-step[data-state="current"] .flow-step-dot {
+  border-color: var(--q-accent);
+  background: var(--q-accent);
+  color: var(--q-text-inverse);
+}
+.flow-step[data-state="current"] {
+  color: var(--q-text);
+  font-weight: 600;
+}
+.flow-step[data-state="done"] .flow-step-dot {
+  border-color: var(--q-signal-positive);
+  background: var(--q-signal-positive);
+  color: var(--q-text-inverse);
+}
+.flow-step-line {
+  flex: 1 1 auto;
+  height: 2px;
+  background: var(--q-border);
+  min-width: 12px;
+}
+
+/* ---- form fields ---- */
+.flow-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--q-space-2);
+  margin-bottom: var(--q-space-4);
+}
+.flow-label {
+  font-size: 14px;
+  font-weight: 500;
+}
+.flow-input {
+  height: 44px;
+  padding: 0 var(--q-space-3);
+  font-size: 16px; /* >=16px avoids iOS zoom */
+  border: 1px solid var(--q-border-strong);
+  border-radius: var(--q-radius-md);
+  background: var(--q-surface);
+  color: var(--q-text);
+  width: 100%;
+}
+.flow-input:focus {
+  outline: none;
+  border-color: var(--q-border-focus);
+  box-shadow: var(--q-shadow-focus, 0 0 0 3px var(--q-indigo-100));
+}
+
+/* ---- buttons ---- */
+.flow-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--q-space-2);
+  height: 48px;
+  padding: 0 var(--q-space-6);
+  border-radius: var(--q-radius-lg);
+  font-size: 15px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.flow-btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.flow-btn.primary {
+  background: var(--q-accent);
+  color: var(--q-text-inverse);
+}
+.flow-btn.primary:hover:not([disabled]) {
+  background: var(--q-accent-hover);
+}
+.flow-btn.secondary {
+  background: var(--q-surface);
+  color: var(--q-text);
+  border-color: var(--q-border-strong);
+}
+.flow-btn.ghost {
+  background: transparent;
+  color: var(--q-text-muted);
+}
+.flow-btn.fullWidth {
+  width: 100%;
+}
+
+.flow-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--q-space-3);
+  color: var(--q-text-subtle);
+  font-size: 13px;
+  margin: var(--q-space-5) 0;
+}
+.flow-divider::before,
+.flow-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--q-border);
+}
+
+.flow-error {
+  background: var(--q-signal-risk-bg);
+  color: var(--q-signal-risk);
+  border-radius: var(--q-radius-md);
+  padding: var(--q-space-3);
+  font-size: 14px;
+  margin-bottom: var(--q-space-4);
+}
+
+.flow-meta {
+  margin-top: var(--q-space-5);
+  text-align: center;
+  font-size: 14px;
+  color: var(--q-text-muted);
+}
+.flow-link {
+  color: var(--q-text-link);
+  font-weight: 500;
+}
+
+/* ---- trust rows (HubSpot connect) ---- */
+.flow-trust {
+  display: flex;
+  flex-direction: column;
+  gap: var(--q-space-4);
+  margin: var(--q-space-6) 0;
+}
+.flow-trust-row {
+  display: flex;
+  gap: var(--q-space-3);
+  align-items: flex-start;
+}
+.flow-trust-row svg {
+  color: var(--q-accent);
+  flex: none;
+  margin-top: 2px;
+}
+
+/* ---- plan cards ---- */
+.flow-plans {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--q-space-4);
+  margin: var(--q-space-6) 0;
+}
+@media (max-width: 640px) {
+  .flow-plans {
+    grid-template-columns: 1fr;
+  }
+}
+.flow-plan {
+  border: 1.5px solid var(--q-border-strong);
+  border-radius: var(--q-radius-lg);
+  padding: var(--q-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--q-space-3);
+  text-align: left;
+  background: var(--q-surface);
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.flow-plan:hover {
+  border-color: var(--q-accent);
+}
+.flow-plan[aria-pressed="true"],
+.flow-plan.selected {
+  border-color: var(--q-accent);
+  box-shadow: var(--q-shadow-focus, 0 0 0 3px var(--q-indigo-100));
+}
+.flow-plan-name {
+  font-weight: 600;
+  font-size: 16px;
+}
+.flow-plan-price {
+  font-family: Geist, Inter, sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.flow-plan-price span {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--q-text-muted);
+}
+.flow-plan-feats {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--q-space-2);
+  font-size: 13px;
+  color: var(--q-text-muted);
+}
+
+/* ---- status pill ---- */
+.flow-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--q-space-2);
+  padding: 4px 10px;
+  border-radius: var(--q-radius-full);
+  font-size: 13px;
+  font-weight: 600;
+}
+.flow-pill.active {
+  background: var(--q-signal-positive-bg);
+  color: var(--q-signal-positive);
+}
+.flow-pill.inactive {
+  background: var(--q-bg-muted);
+  color: var(--q-text-muted);
+}
