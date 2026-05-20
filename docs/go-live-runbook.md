@@ -69,10 +69,16 @@ dashboard reflects the plan, with no manual DB edits.
    `https://app.qintar.com/api/billing/webhook` (events: `checkout.session.completed`,
    `customer.subscription.*`).
 4. **[CTO]** Set `ENFORCE_ENTITLEMENTS=true` so non-paying orgs are gated.
-5. **[operator]** Vercel: connect the custom domain + DNS; disable Deployment
-   Protection so the app is publicly reachable. `CRON_SECRET` stays set (HubSpot
-   sync cron in `vercel.json` runs every 15 min). `npm run db:migrate` against the
-   **prod** `DATABASE_URL`.
+5. **[operator]** Vercel: connect the custom domain (`app.qintar.com`) + DNS;
+   disable Deployment Protection so the app is publicly reachable. `CRON_SECRET`
+   stays set (HubSpot sync cron in `vercel.json` runs **daily** `0 6 * * *` —
+   Hobby caps crons at once/day; on **Vercel Pro** raise it to e.g. `*/15 * * * *`).
+   `npm run db:migrate` against the **prod** `DATABASE_URL`.
+
+> **Deploy gotcha (fixed):** the first push of W2 failed the Vercel build because
+> the cron was `*/15 * * * *`, which exceeds the Hobby once-per-day limit
+> ("Deployment failed" → cron usage/pricing). Schedule is now daily; restore
+> sub-daily only after upgrading the Vercel plan.
 
 ## 4. Post-flip verification
 

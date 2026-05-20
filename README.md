@@ -104,7 +104,7 @@ companies, and activities into Postgres for the W3 Pipeline Health Score.
 | `src/lib/hubspot/sync.ts` | Sync engine: full (list+associations) / incremental (Search by `hs_lastmodifieddate`) |
 | `src/app/api/hubspot/install` | `GET` → redirect to HubSpot consent (sets CSRF state cookie) |
 | `src/app/api/hubspot/callback` | `GET` → exchange code, persist connection, run initial full sync |
-| `src/app/api/hubspot/sync` | `POST` manual / `GET` cron trigger (secret-gated). `vercel.json` runs it every 15 min |
+| `src/app/api/hubspot/sync` | `POST` manual / `GET` cron trigger (secret-gated). `vercel.json` runs it daily (`0 6 * * *`) — Vercel Hobby caps crons at once/day; bump to a sub-daily schedule on Vercel Pro |
 | `src/app/api/hubspot/status` | `GET` → row counts + connection sync status (secret-gated) |
 
 ### One-time setup (operator)
