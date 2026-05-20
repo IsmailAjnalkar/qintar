@@ -26,6 +26,7 @@ yarn-error.log*
 .idea
 *.pem
 .vercel
+.vercel-token
 .turbo
 coverage
 *.tsbuildinfo
@@ -41,3 +42,5 @@ coverage
 /t1-candidates.md
 /icp-target-list*.csv
 *.csv
+
+.vercel
