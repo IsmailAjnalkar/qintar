@@ -3,12 +3,14 @@ import { NextResponse } from "next/server";
 
 import { db, schema } from "@/db/client";
 import { getStripeWebhookSecret } from "@/lib/billing/config";
+import { statusGrantsAccess } from "@/lib/billing/plans";
 import { upsertSubscriptionFromStripe } from "@/lib/billing/service";
 import {
   constructWebhookEvent,
   retrieveSubscription,
   type StripeSubscription,
 } from "@/lib/billing/stripe";
+import { onSubscriptionCancelled, onSubscriptionStarted } from "@/lib/loops/lifecycle";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,7 +67,7 @@ async function handleEvent(type: string, object: Record<string, unknown>): Promi
       const subscriptionId = object.subscription as string | undefined;
       if (subscriptionId) {
         const sub = await retrieveSubscription(subscriptionId);
-        await upsertSubscriptionFromStripe(sub);
+        await applySubscription(sub);
       }
       return;
     }
@@ -74,11 +76,41 @@ async function handleEvent(type: string, object: Record<string, unknown>): Promi
     case "customer.subscription.deleted":
     case "customer.subscription.paused":
     case "customer.subscription.resumed": {
-      await upsertSubscriptionFromStripe(object as unknown as StripeSubscription);
+      await applySubscription(object as unknown as StripeSubscription);
       return;
     }
     default:
       // Unhandled types are acked (we already recorded them); add cases as needed.
       return;
+  }
+}
+
+/**
+ * Persist a Stripe subscription and fire the matching Loops lifecycle event on a
+ * change in access (PRE-13). We snapshot the prior access state for the customer
+ * BEFORE the upsert, then compare:
+ *   - gained access  → subscription_started (exits Welcome/Upsell, plan→pro)
+ *   - lost access via cancellation (status "canceled") → subscription_cancelled (Winback)
+ * Per-event idempotency is already guaranteed by the billing_events gate, and
+ * the access-transition check means resubscribe/dunning churn won't re-fire.
+ * Loops calls are fire-and-forget so they never fail the webhook.
+ */
+async function applySubscription(sub: StripeSubscription): Promise<void> {
+  const prior = await db
+    .select({ status: schema.subscriptions.status, plan: schema.subscriptions.plan })
+    .from(schema.subscriptions)
+    .where(eq(schema.subscriptions.stripeCustomerId, sub.customer))
+    .limit(1);
+  const hadAccess = statusGrantsAccess(prior[0]?.status) && (prior[0]?.plan ?? null) != null;
+
+  const row = await upsertSubscriptionFromStripe(sub);
+  if (!row) return; // couldn't map to an org; nothing to notify
+
+  const hasAccess = statusGrantsAccess(row.status) && row.plan != null;
+
+  if (!hadAccess && hasAccess) {
+    void onSubscriptionStarted(row.organizationId);
+  } else if (hadAccess && !hasAccess && row.status === "canceled") {
+    void onSubscriptionCancelled(row.organizationId);
   }
 }

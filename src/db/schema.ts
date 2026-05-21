@@ -77,12 +77,16 @@ export const users = pgTable(
     provider: text("provider").notNull().default("password"),
     // External IdP subject id (e.g. Clerk user id) — null for built-in users.
     externalId: text("external_id"),
+    // Last real activity (sign-in today; extend to product usage). Drives the
+    // PRE-13 nightly inactivity sweep → Loops `went_inactive` / Re-engagement.
+    lastActiveAt: timestamp("last_active_at", { withTimezone: true }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({
     emailUnique: uniqueIndex("users_email_unique").on(table.email),
     externalIdx: index("users_external_idx").on(table.externalId),
+    lastActiveIdx: index("users_last_active_idx").on(table.lastActiveAt),
   }),
 );
 

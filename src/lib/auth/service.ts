@@ -12,6 +12,7 @@
 import { and, eq } from "drizzle-orm";
 
 import { db, schema } from "@/db/client";
+import { onFreeSignup, touchLastActive } from "@/lib/loops/lifecycle";
 
 import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH } from "./password";
 
@@ -92,6 +93,11 @@ export async function signUpWithPassword(params: {
     return { userId: user.id, organizationId: org.id };
   });
 
+  // Tell Loops a free signup happened → fires the Welcome Loop (PRE-13).
+  // Fire-and-forget: a Loops outage must never fail a signup. Signup captures a
+  // workspace name, not a person's, so firstName is derived from the email.
+  void onFreeSignup({ email, name: null });
+
   return { ...result, email };
 }
 
@@ -118,6 +124,9 @@ export async function signInWithPassword(params: {
   if (!organizationId) {
     throw new AuthError("This account has no workspace", "invalid_credentials");
   }
+  // Sign-in is a real activity signal — keep lastActiveAt fresh so the nightly
+  // inactivity sweep (PRE-13) only re-engages genuinely dormant users.
+  void touchLastActive(user.id);
   return { userId: user.id, organizationId, email };
 }
 
