@@ -13,13 +13,43 @@
  *   3. event went_inactive             → Re-engagement Loop
  *   4. event subscription_started      → exits Welcome/Upsell
  *   5. event subscription_cancelled    → Winback Loop
- *   Run:  LOOPS_LIVE=1 LOOPS_API_KEY=… [LOOPS_TEST_EMAIL=you+seed@domain] npm run loops:smoke
+ *   Run:  LOOPS_LIVE=1 npm run loops:smoke   # reads LOOPS_API_KEY from .env.local
+ *   (or pass it inline: LOOPS_LIVE=1 LOOPS_API_KEY=… LOOPS_TEST_EMAIL=you+seed@domain npm run loops:smoke)
  *
  * Only client.ts + config.ts are imported (no DB), so the offline run needs no
  * DATABASE_URL — same shape as scripts/billing-smoke.ts.
  */
+import { readFileSync } from "node:fs";
+
 import { LOOPS_EVENTS, getLoopsApiKey, isLoopsConfigured } from "@/lib/loops/config";
 import { loopsCreateContact, loopsSendEvent, loopsUpdateContact } from "@/lib/loops/client";
+
+/**
+ * Minimal .env.local loader (dependency-free): tsx/node does not auto-load it
+ * the way Next.js does, so `LOOPS_API_KEY` dropped in .env.local would otherwise
+ * be invisible here. Only fills vars not already set, so inline env still wins.
+ * config.ts reads env lazily (per-call), so loading here before main() suffices.
+ */
+function loadEnvLocal(path = ".env.local") {
+  let text: string;
+  try {
+    text = readFileSync(path, "utf8");
+  } catch {
+    return; // no .env.local — fine for offline runs
+  }
+  for (const line of text.split(/\r?\n/)) {
+    if (line.trim().startsWith("#")) continue;
+    const m = /^\s*([A-Za-z0-9_]+)\s*=\s*(.*)\s*$/.exec(line);
+    if (!m) continue;
+    const key = m[1];
+    let val = m[2].trim();
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    if (process.env[key] === undefined) process.env[key] = val;
+  }
+}
+loadEnvLocal();
 
 const checks: Array<[string, boolean]> = [];
 function check(label: string, pass: boolean) {
