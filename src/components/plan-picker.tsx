@@ -18,7 +18,7 @@ export function PlanPicker({ plans, email }: { plans: PlanOption[]; email?: stri
     setError(null);
     setPending(true);
     try {
-      const res = await fetch("/api/billing/checkout", {
+      const res = await fetch("/api/billing/paypal/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan: selected, email }),
@@ -32,7 +32,7 @@ export function PlanPicker({ plans, email }: { plans: PlanOption[]; email?: stri
         setPending(false);
         return;
       }
-      // Hand off to Stripe's hosted Checkout.
+      // Hand off to PayPal's payer-approval flow.
       window.location.href = data.url;
     } catch {
       setError("Network error starting checkout. Please try again.");
@@ -78,10 +78,10 @@ export function PlanPicker({ plans, email }: { plans: PlanOption[]; email?: stri
         onClick={checkout}
         disabled={pending}
       >
-        {pending ? "Starting checkout…" : "Continue to checkout"}
+        {pending ? "Starting checkout…" : "Continue to PayPal"}
       </button>
       <p className="flow-caption" style={{ marginTop: "var(--q-space-3)", textAlign: "center" }}>
-        Secure checkout by Stripe. Cancel anytime from your billing portal.
+        Secure checkout via PayPal. Cancel anytime.
       </p>
     </div>
   );

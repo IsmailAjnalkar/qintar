@@ -300,8 +300,12 @@ export const subscriptions = pgTable(
     organizationId: uuid("organization_id")
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
-    stripeCustomerId: text("stripe_customer_id").notNull(),
+    // Nullable: PayPal-only subscriptions (QIN-24 pivot) have no Stripe customer.
+    stripeCustomerId: text("stripe_customer_id"),
     stripeSubscriptionId: text("stripe_subscription_id"),
+    // PayPal Subscriptions (QIN-24 — operator chose PayPal-only).
+    paypalSubscriptionId: text("paypal_subscription_id"),
+    paypalPlanId: text("paypal_plan_id"),
     // starter | team | scale | null (null until first subscription event)
     plan: text("plan"),
     priceId: text("price_id"),
@@ -321,6 +325,7 @@ export const subscriptions = pgTable(
     orgUnique: uniqueIndex("subscriptions_org_unique").on(table.organizationId),
     customerIdx: index("subscriptions_customer_idx").on(table.stripeCustomerId),
     subIdUnique: uniqueIndex("subscriptions_stripe_sub_unique").on(table.stripeSubscriptionId),
+    paypalSubIdx: index("subscriptions_paypal_sub_idx").on(table.paypalSubscriptionId),
   }),
 );
 
