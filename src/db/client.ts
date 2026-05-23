@@ -2,12 +2,15 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 import * as schema from "./schema";
+import { resolveDatabaseUrl } from "./url";
 
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
+if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not set");
 }
+
+// Normalize Supabase's IPv6-only direct host to the IPv4 pooler host so the app
+// connects on Vercel (see ./url.ts).
+const databaseUrl = resolveDatabaseUrl(process.env.DATABASE_URL);
 
 // Supabase Postgres. `prepare: false` keeps us compatible with Supabase's
 // transaction-mode connection pooler (port 6543) and is harmless on a direct

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import postgres from "postgres";
 
 import { safeEqual } from "@/lib/crypto";
+import { resolveDatabaseUrl } from "@/db/url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
   if (!expected || !secret || !safeEqual(secret, expected)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
-  const url = process.env.DATABASE_URL;
+  const url = resolveDatabaseUrl(process.env.DATABASE_URL ?? "");
   if (!url) return NextResponse.json({ ok: false, error: "no_database_url" }, { status: 500 });
 
   const sql = postgres(url, { max: 1, ssl: "require" });
